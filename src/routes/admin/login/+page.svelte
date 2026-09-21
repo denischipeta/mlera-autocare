@@ -1,9 +1,51 @@
+```svelte
 <script lang="ts">
 	import { LockKeyhole, Mail, ArrowLeft, ShieldCheck } from 'lucide-svelte';
+	import { goto } from '$app/navigation';
 
 	let email = '';
 	let password = '';
 	let showPassword = false;
+	let loading = false;
+	let errorMessage = '';
+
+	async function handleLogin() {
+		errorMessage = '';
+
+		if (!email.trim() || !password) {
+			errorMessage = 'Please enter your email address and password.';
+			return;
+		}
+
+		loading = true;
+
+		try {
+			const response = await fetch('/api/admin/login', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					email: email.trim(),
+					password
+				})
+			});
+
+			const result = await response.json();
+
+			if (!response.ok || !result.success) {
+				errorMessage = result.message || 'Invalid email or password.';
+				return;
+			}
+
+			goto('/admin', { replaceState: true });
+		} catch (error) {
+			console.error('Login request failed:', error);
+			errorMessage = 'Unable to connect to the server. Please try again.';
+		} finally {
+			loading = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -64,8 +106,10 @@
 			</div>
 
 			<!-- LOGIN CARD -->
-			<div class="rounded-2xl border border-zinc-300 bg-zinc-50 p-7 shadow-xl shadow-zinc-200/50 sm:p-8">
-				<form class="space-y-5">
+			<div
+				class="rounded-2xl border border-zinc-300 bg-zinc-50 p-7 shadow-xl shadow-zinc-200/50 sm:p-8"
+			>
+				<form class="space-y-5" on:submit|preventDefault={handleLogin}>
 					<!-- EMAIL -->
 					<div>
 						<label
@@ -87,7 +131,8 @@
 								bind:value={email}
 								placeholder="admin@mlerastores.com"
 								autocomplete="username"
-								class="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-11 pr-4 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10"
+								disabled={loading}
+								class="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-11 pr-4 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
 							/>
 						</div>
 					</div>
@@ -115,31 +160,46 @@
 								bind:value={password}
 								placeholder="Enter your password"
 								autocomplete="current-password"
-								class="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-11 pr-20 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10"
+								disabled={loading}
+								class="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3.5 pl-11 pr-20 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
 							/>
 
 							<button
 								type="button"
 								on:click={() => (showPassword = !showPassword)}
-								class="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-bold text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800"
+								disabled={loading}
+								class="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-bold text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
 							>
 								{showPassword ? 'Hide' : 'Show'}
 							</button>
 						</div>
 					</div>
 
+					<!-- ERROR -->
+					{#if errorMessage}
+						<div
+							class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium leading-5 text-red-700"
+							role="alert"
+						>
+							{errorMessage}
+						</div>
+					{/if}
+
 					<!-- SUBMIT -->
 					<button
 						type="submit"
-						class="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-red-600/20 transition hover:bg-red-500 focus:outline-none focus:ring-4 focus:ring-red-500/20"
+						disabled={loading}
+						class="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-red-600/20 transition hover:bg-red-500 focus:outline-none focus:ring-4 focus:ring-red-500/20 disabled:cursor-not-allowed disabled:opacity-70"
 					>
 						<LockKeyhole size={18} />
-						Sign In
+						{loading ? 'Signing In...' : 'Sign In'}
 					</button>
 				</form>
 
 				<!-- SECURITY NOTE -->
-				<div class="mt-6 flex items-start gap-3 rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3.5">
+				<div
+					class="mt-6 flex items-start gap-3 rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3.5"
+				>
 					<ShieldCheck
 						size={17}
 						class="mt-0.5 shrink-0 text-zinc-500"
@@ -159,3 +219,4 @@
 		</div>
 	</main>
 </div>
+```

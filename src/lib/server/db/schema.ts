@@ -91,3 +91,51 @@ export const stockMovements = pgTable(
 		createdAt: timestamp('created_at').defaultNow().notNull()
 	}
 );
+
+export const adminUsers = pgTable(
+	'admin_users',
+	{
+		id: uuid('id').defaultRandom().primaryKey(),
+
+		email: varchar('email', { length: 255 }).notNull().unique(),
+
+		passwordHash: text('password_hash').notNull(),
+
+		fullName: varchar('full_name', { length: 255 }).notNull(),
+
+		role: varchar('role', { length: 30 }).default('ADMIN').notNull(),
+
+		active: boolean('active').default(true).notNull(),
+
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+
+		updatedAt: timestamp('updated_at').defaultNow().notNull()
+	},
+	(table) => [
+		index('idx_admin_users_active').on(table.active),
+		index('idx_admin_users_email').on(table.email)
+	]
+);
+
+
+export const adminSessions = pgTable(
+	'admin_sessions',
+	{
+		id: uuid('id').defaultRandom().primaryKey(),
+
+		adminUserId: uuid('admin_user_id')
+			.notNull()
+			.references(() => adminUsers.id, { onDelete: 'cascade' }),
+
+		tokenHash: text('token_hash').notNull().unique(),
+
+		expiresAt: timestamp('expires_at').notNull(),
+
+		createdAt: timestamp('created_at').defaultNow().notNull()
+	},
+	(table) => [
+		index('idx_admin_sessions_admin_user').on(table.adminUserId),
+		index('idx_admin_sessions_token_hash').on(table.tokenHash),
+		index('idx_admin_sessions_expires_at').on(table.expiresAt)
+	]
+);

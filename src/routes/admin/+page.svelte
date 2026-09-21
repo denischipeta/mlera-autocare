@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import {
-		Package,
-		Boxes,
-		Tags,
-		AlertTriangle,
-		ArrowLeft,
-		Plus,
-		FileText
-	} from 'lucide-svelte';
-
+	Package,
+	Boxes,
+	Tags,
+	AlertTriangle,
+	ArrowLeft,
+	Plus,
+	FileText,
+	LogOut
+} from 'lucide-svelte';
 	type Product = {
 		id: string;
 		sku: string;
@@ -47,6 +47,23 @@
 			loading = false;
 		}
 	});
+
+
+	async function handleLogout() {
+	try {
+		const response = await fetch('/api/admin/logout', {
+			method: 'POST'
+		});
+
+		if (!response.ok) {
+			throw new Error('Logout failed');
+		}
+
+		window.location.replace('/admin/login');
+	} catch (error) {
+		console.error('Logout failed:', error);
+	}
+}
 
 	$: activeProducts = products.filter((product) => product.active);
 
@@ -93,13 +110,24 @@
 				</h1>
 			</div>
 
-			<a
-				href="/shop"
-				class="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-bold text-white transition hover:border-red-500/50 hover:bg-white/10"
-			>
-				<ArrowLeft size={17} />
-				Back to Shop
-			</a>
+			<div class="flex items-center gap-3">
+	<a
+		href="/shop"
+		class="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-bold text-white transition hover:border-red-500/50 hover:bg-white/10"
+	>
+		<ArrowLeft size={17} />
+		Back to Shop
+	</a>
+
+	<button
+		type="button"
+		on:click={handleLogout}
+		class="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-500"
+	>
+		<LogOut size={17} />
+		Logout
+	</button>
+</div>
 		</div>
 	</header>
 
