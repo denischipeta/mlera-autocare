@@ -21,10 +21,9 @@
 	let sellingPrice = '';
 	let stockQuantity = '0';
 	let reorderLevel = '5';
-	let imageUrl = '';
-let imageFile: File | null = null;
-let imagePreview = '';
-let active = true;
+	let imageFile: File | null = null;
+	let imagePreview = '';
+	let active = true;
 
 	onMount(async () => {
 		try {
@@ -53,35 +52,33 @@ let active = true;
 		}
 	});
 
-
-	//Image Handle function
 	function handleImageSelect(event: Event) {
-	const input = event.currentTarget as HTMLInputElement;
-	const file = input.files?.[0];
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
 
-	if (!file) {
-		return;
+		if (!file) {
+			return;
+		}
+
+		imageFile = file;
+
+		if (imagePreview) {
+			URL.revokeObjectURL(imagePreview);
+		}
+
+		imagePreview = URL.createObjectURL(file);
 	}
 
-	imageFile = file;
-
-	if (imagePreview) {
-		URL.revokeObjectURL(imagePreview);
-	}
-
-	imagePreview = URL.createObjectURL(file);
-}
-
-
-	// Save product function
 	async function saveProduct() {
 		error = '';
 		saving = true;
 
 		try {
-			let uploadedImageUrl = imageUrl.trim() || null;
+			let uploadedImageUrl: string | null = null;
 
-			// Upload the selected product image first
+			/*
+			 * Upload the selected image first.
+			 */
 			if (imageFile) {
 				const formData = new FormData();
 				formData.append('file', imageFile);
@@ -102,7 +99,12 @@ let active = true;
 				uploadedImageUrl = uploadResult.url;
 			}
 
-			// Create the product using the uploaded image URL
+			/*
+			 * Create the product.
+			 *
+			 * Description is sent as null when the field
+			 * is left empty.
+			 */
 			const response = await fetch('/api/products', {
 				method: 'POST',
 				headers: {
@@ -164,6 +166,7 @@ let active = true;
 				class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold transition hover:bg-white/10"
 			>
 				<ArrowLeft size={17} />
+
 				<span class="hidden sm:inline">Products</span>
 				<span class="sm:hidden">Back</span>
 			</a>
@@ -172,28 +175,37 @@ let active = true;
 
 	<main class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
 		<div class="mb-8">
-			<p class="text-sm font-semibold text-red-600">Inventory Management</p>
+			<p class="text-sm font-semibold text-red-600">
+				Inventory Management
+			</p>
 
 			<h2 class="mt-1 text-2xl font-black tracking-tight text-zinc-900">
 				Create a new product
 			</h2>
 
 			<p class="mt-2 text-sm text-zinc-500">
-				Add product information that will be stored in the Mlera Stores database.
+				Add product information that will be stored in the Mlera Stores
+				database.
 			</p>
 		</div>
 
 		{#if error}
-			<div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
+			<div
+				class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700"
+			>
 				{error}
 			</div>
 		{/if}
 
 		<form class="space-y-6" on:submit|preventDefault={saveProduct}>
 			<!-- BASIC INFORMATION -->
-			<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+			<section
+				class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6"
+			>
 				<div class="mb-6">
-					<h3 class="text-lg font-black text-zinc-900">Basic Information</h3>
+					<h3 class="text-lg font-black text-zinc-900">
+						Basic Information
+					</h3>
 
 					<p class="mt-1 text-sm text-zinc-500">
 						Identify the product and assign it to a category.
@@ -201,8 +213,12 @@ let active = true;
 				</div>
 
 				<div class="grid gap-5 sm:grid-cols-2">
+					<!-- PRODUCT NAME -->
 					<div class="sm:col-span-2">
-						<label for="productName" class="mb-2 block text-sm font-bold text-zinc-700">
+						<label
+							for="productName"
+							class="mb-2 block text-sm font-bold text-zinc-700"
+						>
 							Product Name <span class="text-red-600">*</span>
 						</label>
 
@@ -216,8 +232,12 @@ let active = true;
 						/>
 					</div>
 
+					<!-- SKU -->
 					<div>
-						<label for="sku" class="mb-2 block text-sm font-bold text-zinc-700">
+						<label
+							for="sku"
+							class="mb-2 block text-sm font-bold text-zinc-700"
+						>
 							SKU <span class="text-red-600">*</span>
 						</label>
 
@@ -231,8 +251,12 @@ let active = true;
 						/>
 					</div>
 
+					<!-- CATEGORY -->
 					<div>
-						<label for="category" class="mb-2 block text-sm font-bold text-zinc-700">
+						<label
+							for="category"
+							class="mb-2 block text-sm font-bold text-zinc-700"
+						>
 							Category <span class="text-red-600">*</span>
 						</label>
 
@@ -244,35 +268,52 @@ let active = true;
 							class="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white disabled:cursor-not-allowed disabled:opacity-60"
 						>
 							<option value="" disabled>
-								{loadingCategories ? 'Loading categories...' : 'Select category'}
+								{loadingCategories
+									? 'Loading categories...'
+									: 'Select category'}
 							</option>
 
 							{#each categories as item}
-								<option value={item.id}>{item.name}</option>
+								<option value={item.id}>
+									{item.name}
+								</option>
 							{/each}
 						</select>
 					</div>
 
+					<!-- DESCRIPTION -->
 					<div class="sm:col-span-2">
-						<label for="description" class="mb-2 block text-sm font-bold text-zinc-700">
+						<label
+							for="description"
+							class="mb-2 block text-sm font-bold text-zinc-700"
+						>
 							Description
 						</label>
 
 						<textarea
 							id="description"
 							bind:value={description}
-							rows="4"
-							placeholder="Describe the product, specifications, size, application, etc."
-							class="w-full resize-y rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white"
+							rows="5"
+							placeholder="Describe the product, specifications, size, application, compatibility, features, or other useful information..."
+							class="w-full resize-y rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm leading-6 outline-none transition focus:border-red-500 focus:bg-white"
 						></textarea>
+
+						<p class="mt-2 text-xs text-zinc-400">
+							Optional. This description can be used to provide customers
+							with more information about the product.
+						</p>
 					</div>
 				</div>
 			</section>
 
 			<!-- PRICING -->
-			<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+			<section
+				class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6"
+			>
 				<div class="mb-6">
-					<h3 class="text-lg font-black text-zinc-900">Pricing</h3>
+					<h3 class="text-lg font-black text-zinc-900">
+						Pricing
+					</h3>
 
 					<p class="mt-1 text-sm text-zinc-500">
 						Set the cost and customer selling price in MWK.
@@ -280,13 +321,19 @@ let active = true;
 				</div>
 
 				<div class="grid gap-5 sm:grid-cols-2">
+					<!-- COST PRICE -->
 					<div>
-						<label for="costPrice" class="mb-2 block text-sm font-bold text-zinc-700">
+						<label
+							for="costPrice"
+							class="mb-2 block text-sm font-bold text-zinc-700"
+						>
 							Cost Price
 						</label>
 
 						<div class="relative">
-							<span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-zinc-400">
+							<span
+								class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-zinc-400"
+							>
 								MK
 							</span>
 
@@ -302,13 +349,19 @@ let active = true;
 						</div>
 					</div>
 
+					<!-- SELLING PRICE -->
 					<div>
-						<label for="sellingPrice" class="mb-2 block text-sm font-bold text-zinc-700">
+						<label
+							for="sellingPrice"
+							class="mb-2 block text-sm font-bold text-zinc-700"
+						>
 							Selling Price
 						</label>
 
 						<div class="relative">
-							<span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-zinc-400">
+							<span
+								class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-zinc-400"
+							>
 								MK
 							</span>
 
@@ -322,27 +375,31 @@ let active = true;
 								class="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-3 pl-12 pr-4 text-sm outline-none transition focus:border-red-500 focus:bg-white"
 							/>
 						</div>
-
-						<p class="mt-2 text-xs text-zinc-400">
-							Leave blank if the price has not yet been set.
-						</p>
 					</div>
 				</div>
 			</section>
 
 			<!-- INVENTORY -->
-			<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+			<section
+				class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6"
+			>
 				<div class="mb-6">
-					<h3 class="text-lg font-black text-zinc-900">Inventory</h3>
+					<h3 class="text-lg font-black text-zinc-900">
+						Inventory
+					</h3>
 
 					<p class="mt-1 text-sm text-zinc-500">
-						Set the current quantity and the level at which the product should be flagged.
+						Set the available quantity and low-stock threshold.
 					</p>
 				</div>
 
 				<div class="grid gap-5 sm:grid-cols-2">
+					<!-- STOCK -->
 					<div>
-						<label for="stockQuantity" class="mb-2 block text-sm font-bold text-zinc-700">
+						<label
+							for="stockQuantity"
+							class="mb-2 block text-sm font-bold text-zinc-700"
+						>
 							Stock Quantity <span class="text-red-600">*</span>
 						</label>
 
@@ -357,8 +414,12 @@ let active = true;
 						/>
 					</div>
 
+					<!-- REORDER LEVEL -->
 					<div>
-						<label for="reorderLevel" class="mb-2 block text-sm font-bold text-zinc-700">
+						<label
+							for="reorderLevel"
+							class="mb-2 block text-sm font-bold text-zinc-700"
+						>
 							Reorder Level <span class="text-red-600">*</span>
 						</label>
 
@@ -375,113 +436,95 @@ let active = true;
 				</div>
 			</section>
 
-			<!-- IMAGE -->
-			<!-- IMAGE -->
-<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+			<!-- PRODUCT IMAGE -->
+			<!-- PRODUCT IMAGE -->
+<section
+	class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6"
+>
 	<div class="mb-6">
-		<h3 class="text-lg font-black text-zinc-900">Product Image</h3>
+		<h3 class="text-lg font-black text-zinc-900">
+			Product Image
+		</h3>
 
 		<p class="mt-1 text-sm text-zinc-500">
-			Select an image of the product. The image can be uploaded when the product is saved.
+			Select a product image from your computer. The image will be uploaded
+			automatically when you save the product.
 		</p>
 	</div>
 
-	<div class="grid gap-6 sm:grid-cols-[220px_1fr] sm:items-start">
-		<!-- IMAGE PREVIEW -->
-		<div
-			class="flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 sm:w-[220px]"
-		>
-			{#if imagePreview}
-				<img
-					src={imagePreview}
-					alt="Selected product preview"
-					class="h-full w-full object-contain"
-				/>
-			{:else}
-				<div class="px-5 text-center">
-					<p class="text-sm font-bold text-zinc-400">No image selected</p>
-
-					<p class="mt-1 text-xs text-zinc-400">
-						Product image preview
-					</p>
-				</div>
-			{/if}
-		</div>
-
-		<!-- IMAGE SELECTOR -->
+	<div class="space-y-5">
 		<div>
 			<label
-				for="productImage"
+				for="imageFile"
 				class="mb-2 block text-sm font-bold text-zinc-700"
 			>
-				Product Image
+				Select Image
 			</label>
 
 			<input
-				id="productImage"
+				id="imageFile"
 				type="file"
 				accept="image/jpeg,image/png,image/webp"
 				on:change={handleImageSelect}
-				class="block w-full cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50 text-sm text-zinc-600 file:mr-4 file:cursor-pointer file:border-0 file:bg-red-600 file:px-4 file:py-3 file:text-sm file:font-bold file:text-white hover:file:bg-red-700"
+				class="block w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-black file:px-4 file:py-2 file:text-sm file:font-bold file:text-white hover:file:bg-zinc-800"
 			/>
 
 			<p class="mt-2 text-xs text-zinc-400">
-				Supported formats: JPG, JPEG, PNG and WebP.
+				Supported formats: JPG, PNG and WebP. Maximum size: 5 MB.
 			</p>
 
 			{#if imageFile}
-				<div class="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-					<p class="text-xs font-bold uppercase tracking-wide text-zinc-400">
-						Selected file
-					</p>
-
-					<p class="mt-1 break-all text-sm font-semibold text-zinc-700">
-						{imageFile.name}
-					</p>
-
-					<p class="mt-1 text-xs text-zinc-400">
-						{Math.round(imageFile.size / 1024)} KB
-					</p>
-				</div>
+				<p class="mt-2 text-xs font-medium text-zinc-600">
+					Selected: {imageFile.name}
+				</p>
 			{/if}
 		</div>
+
+		{#if imagePreview}
+			<div>
+				<p class="mb-2 text-sm font-bold text-zinc-700">
+					Image Preview
+				</p>
+
+				<div
+					class="h-48 w-48 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50"
+				>
+					<img
+						src={imagePreview}
+						alt="Selected product preview"
+						class="h-full w-full object-cover"
+					/>
+				</div>
+			</div>
+		{/if}
 	</div>
 </section>
 
 			<!-- STATUS -->
-			<section class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
-				<div class="flex items-start justify-between gap-5">
+			<section
+				class="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6"
+			>
+				<div class="flex items-start gap-4">
+					<input
+						id="active"
+						type="checkbox"
+						bind:checked={active}
+						class="mt-1 h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+					/>
+
 					<div>
-						<h3 class="text-lg font-black text-zinc-900">Product Status</h3>
+						<label
+							for="active"
+							class="text-sm font-bold text-zinc-900"
+						>
+							Product is active
+						</label>
 
 						<p class="mt-1 text-sm text-zinc-500">
-							Active products are available to customers in the shop.
+							Active products are available for display and sale in
+							Mlera Stores.
 						</p>
 					</div>
-
-					<label class="relative inline-flex cursor-pointer items-center">
-						<input
-							type="checkbox"
-							bind:checked={active}
-							class="peer sr-only"
-						/>
-
-						<div class="h-7 w-12 rounded-full bg-zinc-300 transition peer-checked:bg-red-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-red-500/30"></div>
-
-						<div class="absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow-sm transition peer-checked:translate-x-5"></div>
-					</label>
-				</div>
-
-				<div class="mt-4">
-					<span
-						class={`rounded-full px-3 py-1 text-xs font-bold ${
-							active
-								? 'bg-emerald-100 text-emerald-700'
-								: 'bg-zinc-100 text-zinc-500'
-						}`}
-					>
-						{active ? 'Active' : 'Inactive'}
-					</span>
 				</div>
 			</section>
 
@@ -489,18 +532,19 @@ let active = true;
 			<div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
 				<a
 					href="/admin/products"
-					class="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-6 py-3 text-sm font-bold text-zinc-700 transition hover:bg-zinc-100"
+					class="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-5 py-3 text-sm font-bold text-zinc-700 transition hover:bg-zinc-50"
 				>
 					Cancel
 				</a>
 
 				<button
 					type="submit"
-					disabled={saving || loadingCategories}
+					disabled={saving}
 					class="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
 				>
 					<Save size={18} />
-					{saving ? 'Saving...' : 'Save Product'}
+
+					{saving ? 'Saving Product...' : 'Save Product'}
 				</button>
 			</div>
 		</form>
