@@ -2,7 +2,9 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { ArrowLeft, Save } from 'lucide-svelte';
+	import { Save } from 'lucide-svelte';
+import AdminHeader from '$lib/components/admin/AdminHeader.svelte';
+import AdminFooter from '$lib/components/admin/AdminFooter.svelte';
 
 	type Category = {
 		id: string;
@@ -196,24 +198,7 @@ let active = true;
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50">
-	<header class="bg-black text-white">
-		<div
-			class="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8"
-		>
-			<div>
-				<p class="text-sm font-medium text-red-500">MLERA STORES</p>
-				<h1 class="mt-1 text-2xl font-bold">Edit Product</h1>
-			</div>
-
-			<a
-				href="/admin/products"
-				class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-gray-200 transition hover:bg-white/10 hover:text-white"
-			>
-				<ArrowLeft size={17} />
-				Products
-			</a>
-		</div>
-	</header>
+	<AdminHeader pageTitle="Edit Product" pageLabel="Mlera Stores" />
 
 	<main class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
 		{#if error}
@@ -553,4 +538,6 @@ let active = true;
 			</form>
 		{/if}
 	</main>
+
+	<AdminFooter />
 </div>

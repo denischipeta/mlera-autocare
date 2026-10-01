@@ -1,4 +1,4 @@
-```svelte
+
 <script lang="ts">
 import { onMount } from 'svelte';
 	import {
@@ -14,6 +14,8 @@ import { onMount } from 'svelte';
         Plus,
         Pencil
 	} from 'lucide-svelte';
+import AdminHeader from '$lib/components/admin/AdminHeader.svelte';
+import AdminFooter from '$lib/components/admin/AdminFooter.svelte';
 
 	type Category = {
 		id: string;
@@ -375,61 +377,12 @@ async function updateCategory() {
 
 <div class="min-h-screen bg-black text-white">
 
-	<!-- HEADER -->
-	<header
-		class="sticky top-0 z-50 border-b border-zinc-800 bg-black text-white shadow-xl"
+	<AdminHeader />
+
+	<!-- MAIN -->
+	<main
+		class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
 	>
-		<div
-			class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8"
-		>
-			<div class="flex min-w-0 items-center gap-3">
-
-				<a
-					href="/admin"
-					class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 transition hover:border-red-500 hover:bg-zinc-800"
-					aria-label="Back to admin dashboard"
-				>
-					<ArrowLeft size={18} />
-				</a>
-
-				<div class="min-w-0">
-					<div class="flex items-center gap-2">
-						<FolderOpen
-							size={20}
-							class="shrink-0 text-red-500"
-						/>
-
-						<h1
-							class="truncate text-lg font-black tracking-tight sm:text-xl"
-						>
-							Categories
-						</h1>
-					</div>
-
-					<p
-						class="mt-0.5 hidden text-xs text-zinc-500 sm:block"
-					>
-						Mlera Stores · Product Categories
-					</p>
-				</div>
-			</div>
-
-			<button
-				type="button"
-				on:click={refreshCategories}
-				disabled={refreshing}
-				class="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-bold text-white transition hover:border-red-500 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
-			>
-				<div class:animate-spin={refreshing}>
-					<RefreshCw size={16} />
-				</div>
-
-				<span class="hidden sm:inline">
-					Refresh
-				</span>
-			</button>
-		</div>
-	</header>
 
 	<!-- MAIN -->
 	<main
@@ -1365,43 +1318,7 @@ async function updateCategory() {
 	</div>
 {/if}
 
-	<!-- FOOTER -->
-	<footer class="mt-16 border-t border-zinc-800 bg-black">
-
-		<div
-			class="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-8 sm:flex-row sm:items-center sm:justify-between"
-		>
-
-			<div>
-
-				<p class="text-sm font-black text-white">
-					Mlera Stores
-				</p>
-
-				<p class="mt-1 text-xs text-zinc-500">
-					Inventory &amp; Store Management
-				</p>
-
-			</div>
-
-			<div
-				class="text-xs text-zinc-500 sm:text-right"
-			>
-
-				<p>
-					Part of Mlera AutoCare
-				</p>
-
-				<p class="mt-1">
-					&copy; {new Date().getFullYear()}
-					Mlera Stores. All rights reserved.
-				</p>
-
-			</div>
-
-		</div>
-
-	</footer>
+	<AdminFooter />
 
 </div>
 ```

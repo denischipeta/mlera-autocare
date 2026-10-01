@@ -9,10 +9,11 @@
 		Printer,
 		RefreshCw,
 		Search,
-		ShoppingBag,
 		TrendingUp,
 		X
 	} from 'lucide-svelte';
+	import AdminHeader from '$lib/components/admin/AdminHeader.svelte';
+	import AdminFooter from '$lib/components/admin/AdminFooter.svelte';
 
 	type Summary = {
 		totalProducts: number;
@@ -241,41 +242,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-black text-white">
-	<!-- TOP BAR -->
-	<header
-		class="sticky top-0 z-50 border-b border-zinc-800 bg-black text-white shadow-xl print:hidden"
-	>
-		<div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-			<div class="flex items-center gap-3">
-				<div
-					class="flex h-10 w-10 items-center justify-center rounded-xl border border-red-500/20 bg-red-600/10"
-				>
-					<ShoppingBag size={20} class="text-red-500" />
-				</div>
-
-				<div>
-					<p class="text-sm font-black tracking-wide">MLERA STORES</p>
-					<p class="text-[11px] font-medium text-zinc-500">Inventory Management</p>
-				</div>
-			</div>
-
-			<div class="hidden items-center gap-2 sm:flex">
-				<a
-					href="/admin"
-					class="rounded-lg px-3 py-2 text-sm font-medium text-zinc-400 transition hover:bg-zinc-900 hover:text-white"
-				>
-					Admin Dashboard
-				</a>
-
-				<a
-					href="/shop"
-					class="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm font-semibold text-white transition hover:border-zinc-700 hover:bg-zinc-800"
-				>
-					View Shop
-				</a>
-			</div>
-		</div>
-	</header>
+	<AdminHeader pageTitle="Reports" pageLabel="Mlera Stores" />
 
 	<!-- PAGE -->
 	<main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
@@ -1031,15 +998,7 @@
 		{/if}
 	</main>
 
-	<!-- FOOTER -->
-	<footer class="border-t border-zinc-900 bg-black py-8 print:hidden">
-		<div
-			class="mx-auto flex max-w-7xl flex-col gap-2 px-4 text-center text-xs text-zinc-600 sm:px-6 lg:px-8"
-		>
-			<p class="font-semibold text-zinc-500">MLERA STORES</p>
-			<p>Inventory Management &amp; Reporting</p>
-		</div>
-	</footer>
+	<AdminFooter />
 </div>
 
 <style>

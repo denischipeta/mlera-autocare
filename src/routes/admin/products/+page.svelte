@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { ArrowLeft, Plus, Search } from 'lucide-svelte';
+	import AdminHeader from '$lib/components/admin/AdminHeader.svelte';
+	import AdminFooter from '$lib/components/admin/AdminFooter.svelte';
+	import { Plus, Search } from 'lucide-svelte';
 
 	type Category = {
 		id: string;
@@ -115,29 +117,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-zinc-50">
-	<!-- HEADER -->
-	<header class="bg-black text-white">
-		<div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
-			<div>
-				<p class="text-xs font-bold uppercase tracking-[0.25em] text-red-500">
-					Mlera Stores
-				</p>
-
-				<h1 class="mt-1 text-2xl font-black sm:text-3xl">
-					Product Management
-				</h1>
-			</div>
-
-			<a
-				href="/admin"
-				class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold transition hover:bg-white/10"
-			>
-				<ArrowLeft size={17} />
-				<span class="hidden sm:inline">Dashboard</span>
-				<span class="sm:hidden">Back</span>
-			</a>
-		</div>
-	</header>
+	<AdminHeader pageTitle="Product Management" pageLabel="Mlera Stores" />
 
 	<main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 		<!-- PAGE INTRO -->
@@ -317,4 +297,6 @@
 			{/if}
 		</div>
 	</main>
+
+	<AdminFooter />
 </div>

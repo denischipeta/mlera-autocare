@@ -1,5 +1,8 @@
 
 <script lang="ts">
+	import AdminHeader from '$lib/components/admin/AdminHeader.svelte';
+	import AdminFooter from '$lib/components/admin/AdminFooter.svelte';
+
 	import {
 		Boxes,
 		Search,
@@ -8,7 +11,6 @@
 		XCircle,
 		CheckCircle2,
 		RefreshCw,
-		ArrowLeft,
 		Plus,
 		X
 	} from 'lucide-svelte';
@@ -199,45 +201,7 @@
 
 <div class="min-h-screen bg-black text-white">
 
-	<!-- HEADER -->
-	<header class="sticky top-0 z-50 border-b border-zinc-800 bg-black text-white shadow-xl">
-		<div
-			class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8"
-		>
-			<div class="flex min-w-0 items-center gap-3">
-				<a
-					href="/admin"
-					class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 transition hover:border-red-500 hover:bg-zinc-800"
-					aria-label="Back to admin dashboard"
-				>
-					<ArrowLeft size={18} />
-				</a>
-
-				<div class="min-w-0">
-					<div class="flex items-center gap-2">
-						<Boxes size={20} class="shrink-0 text-red-500" />
-						<h1 class="truncate text-lg font-black tracking-tight sm:text-xl">
-							Inventory
-						</h1>
-					</div>
-
-					<p class="mt-0.5 hidden text-xs text-zinc-500 sm:block">
-						Mlera Stores · Stock Management
-					</p>
-				</div>
-			</div>
-
-			<button
-				type="button"
-				on:click={refreshInventory}
-				disabled={refreshing}
-				class="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-bold text-white transition hover:border-red-500 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
-			>
-				<RefreshCw size={16} class={refreshing ? 'animate-spin' : ''} />
-				<span class="hidden sm:inline">Refresh</span>
-			</button>
-		</div>
-	</header>
+	<AdminHeader pageTitle="Inventory" pageLabel="Mlera Stores" />
 
 	<!-- MAIN -->
 	<main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -740,30 +704,7 @@
 
 	</main>
 
-	<!-- FOOTER -->
-	<footer class="mt-16 border-t border-zinc-800 bg-black">
-		<div
-			class="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-8 sm:flex-row sm:items-center sm:justify-between"
-		>
-			<div>
-				<p class="text-sm font-black text-white">
-					Mlera Stores
-				</p>
-
-				<p class="mt-1 text-xs text-zinc-500">
-					Inventory &amp; Store Management
-				</p>
-			</div>
-
-			<div class="text-xs text-zinc-500 sm:text-right">
-				<p>Part of Mlera AutoCare</p>
-
-				<p class="mt-1">
-					&copy; {new Date().getFullYear()} Mlera Stores. All rights reserved.
-				</p>
-			</div>
-		</div>
-	</footer>
+	<AdminFooter />
 
 </div>
 
