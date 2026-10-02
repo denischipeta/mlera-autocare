@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import AdminHeader from '$lib/components/admin/AdminHeader.svelte';
+	import AdminSidebar from '$lib/components/admin/AdminSidebar.svelte';
 	import AdminFooter from '$lib/components/admin/AdminFooter.svelte';
 	import { Save } from 'lucide-svelte';
 
@@ -9,6 +10,9 @@
 		id: string;
 		name: string;
 	};
+
+	let sidebarCollapsed = false;
+	let sidebarMobileOpen = false;
 
 	let categories: Category[] = [];
 	let loadingCategories = true;
@@ -151,7 +155,29 @@
 </svelte:head>
 
 <div class="min-h-screen bg-zinc-50">
-	<AdminHeader pageTitle="Add Product" pageLabel="Mlera Stores" />
+	<AdminSidebar
+	bind:collapsed={sidebarCollapsed}
+	bind:mobileOpen={sidebarMobileOpen}
+/>
+
+<div
+	class:lg:ml-20={sidebarCollapsed}
+	class:lg:ml-64={!sidebarCollapsed}
+	class="min-h-screen transition-all duration-300"
+>
+		<AdminHeader pageTitle="Add Product" pageLabel="Mlera Stores" />
+
+		<div class="px-4 pt-4 sm:px-6 lg:hidden">
+			<button
+				type="button"
+				on:click={() => (sidebarMobileOpen = true)}
+				class="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50"
+			>
+				<span class="text-lg leading-none">☰</span>
+				Menu
+			</button>
+		</div>
+
 
 	<main class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
 		<div class="mb-8">
@@ -531,4 +557,5 @@
 	</main>
 
 	<AdminFooter />
+	</div>
 </div>

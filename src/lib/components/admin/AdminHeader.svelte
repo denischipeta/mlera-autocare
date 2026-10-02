@@ -1,7 +1,6 @@
 
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import logo from '$lib/assets/images/MleraAuto2.png';
 	import {
 		ArrowLeft,
 		LogOut,
@@ -133,16 +132,6 @@
 		>
 			<!-- BRAND / PAGE TITLE -->
 			<div class="flex min-w-0 items-center gap-3.5">
-				<div
-					class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-md"
-				>
-					<img
-						src={logo}
-						alt="Mlera AutoCare"
-						class="h-full w-full object-contain p-0.5"
-					/>
-				</div>
-
 				<div class="min-w-0">
 					<div class="flex items-center gap-2">
 						<p

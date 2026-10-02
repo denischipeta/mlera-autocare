@@ -15,6 +15,7 @@ import { onMount } from 'svelte';
         Pencil
 	} from 'lucide-svelte';
 import AdminHeader from '$lib/components/admin/AdminHeader.svelte';
+import AdminSidebar from '$lib/components/admin/AdminSidebar.svelte';
 import AdminFooter from '$lib/components/admin/AdminFooter.svelte';
 
 	type Category = {
@@ -50,6 +51,9 @@ import AdminFooter from '$lib/components/admin/AdminFooter.svelte';
 	let error = '';
 
 	let searchTerm = '';
+
+let sidebarCollapsed = false;
+let sidebarMobileOpen = false;
 
     let showAddCategory = false;
 let categoryName = '';
@@ -375,14 +379,41 @@ async function updateCategory() {
 	/>
 </svelte:head>
 
-<div class="min-h-screen bg-black text-white">
+<div class="min-h-screen bg-zinc-200 text-zinc-950">
 
-	<AdminHeader />
+	<AdminSidebar
+		bind:collapsed={sidebarCollapsed}
+		bind:mobileOpen={sidebarMobileOpen}
+	/>
 
-	<!-- MAIN -->
-	<main
-		class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
+	<div
+		class:lg:ml-20={sidebarCollapsed}
+		class:lg:ml-64={!sidebarCollapsed}
+		class="min-h-screen transition-all duration-300"
 	>
+		<AdminHeader />
+
+		<div class="px-4 pt-4 sm:px-6 lg:hidden">
+			<button
+				type="button"
+				on:click={() => (sidebarMobileOpen = true)}
+				class="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50"
+			>
+				<span class="text-lg leading-none">☰</span>
+				Menu
+			</button>
+		</div>
+
+	<div class="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
+		<button
+			type="button"
+			on:click={() => history.back()}
+			class="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:border-zinc-400 hover:bg-zinc-50 hover:text-zinc-950"
+		>
+			<ArrowLeft size={17} strokeWidth={2.2} />
+			Go back
+		</button>
+	</div>
 
 	<!-- MAIN -->
 	<main
@@ -814,7 +845,7 @@ async function updateCategory() {
 										>
 
 											<div
-												class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700"
+												class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-700"
 											>
 												<FolderOpen size={19} />
 											</div>
@@ -892,7 +923,7 @@ async function updateCategory() {
 											<button
 												type="button"
 												on:click={() => openEditCategory(category)}
-												class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-bold text-zinc-700 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+												class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100 hover:text-emerald-800"
 											>
 												<Pencil size={14} />
 												Edit
@@ -1318,7 +1349,8 @@ async function updateCategory() {
 	</div>
 {/if}
 
-	<AdminFooter />
+		<AdminFooter />
+	</div>
 
 </div>
 ```
