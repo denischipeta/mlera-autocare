@@ -8,6 +8,7 @@ export async function GET() {
 		.select({
 			id: products.id,
 			sku: products.sku,
+			barcode: products.barcode,
 			name: products.name,
 			categoryId: products.categoryId,
 			categoryName: categories.name,
@@ -32,6 +33,9 @@ export async function POST({ request }) {
 		const body = await request.json();
 
 		const sku = String(body.sku ?? '').trim();
+		const barcode = body.barcode
+			? String(body.barcode).trim()
+			: null;
 		const name = String(body.name ?? '').trim();
 		const categoryId = body.categoryId ? String(body.categoryId) : null;
 		const description = body.description
@@ -100,6 +104,21 @@ export async function POST({ request }) {
 			);
 		}
 
+		if (barcode) {
+			const existingBarcode = await db
+				.select({ id: products.id })
+				.from(products)
+				.where(eq(products.barcode, barcode))
+				.limit(1);
+
+			if (existingBarcode.length > 0) {
+				return json(
+					{ error: `Barcode "${barcode}" is already registered.` },
+					{ status: 409 }
+				);
+			}
+		}
+
 		const category = await db
 			.select({ id: categories.id })
 			.from(categories)
@@ -117,6 +136,7 @@ export async function POST({ request }) {
 			.insert(products)
 			.values({
 				sku,
+				barcode,
 				name,
 				categoryId,
 				description,

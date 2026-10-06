@@ -4,7 +4,9 @@
 	import AdminHeader from '$lib/components/admin/AdminHeader.svelte';
 	import AdminSidebar from '$lib/components/admin/AdminSidebar.svelte';
 	import AdminFooter from '$lib/components/admin/AdminFooter.svelte';
-	import { Save } from 'lucide-svelte';
+	import { tick } from 'svelte';
+	import { Save, ScanLine, X } from 'lucide-svelte';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 
 	type Category = {
 		id: string;
@@ -21,7 +23,13 @@
 
 	let productName = '';
 	let sku = '';
+	let barcode = '';
 	let category = '';
+
+	let scannerOpen = false;
+	let scannerError = '';
+	let scannerVideo: HTMLVideoElement | null = null;
+	let barcodeReader: BrowserMultiFormatReader | null = null;
 	let description = '';
 	let costPrice = '';
 	let sellingPrice = '';
@@ -30,6 +38,48 @@
 	let imageFile: File | null = null;
 	let imagePreview = '';
 	let active = true;
+
+	async function startBarcodeScanner() {
+		scannerError = '';
+		scannerOpen = true;
+
+		try {
+			await tick();
+
+			barcodeReader = new BrowserMultiFormatReader();
+
+			if (!scannerVideo) {
+				throw new Error('Scanner camera is not ready.');
+			}
+
+			await barcodeReader.decodeFromVideoDevice(
+				undefined,
+				scannerVideo,
+				(result, error) => {
+					if (result) {
+						barcode = result.getText();
+						stopBarcodeScanner();
+					}
+				}
+			);
+		} catch (err) {
+			console.error('Barcode scanner error:', err);
+			scannerError =
+				err instanceof Error
+					? err.message
+					: 'Unable to access the camera.';
+		}
+	}
+
+	function stopBarcodeScanner() {
+		if (scannerVideo?.srcObject instanceof MediaStream) {
+			scannerVideo.srcObject.getTracks().forEach((track) => track.stop());
+			scannerVideo.srcObject = null;
+		}
+
+		barcodeReader = null;
+		scannerOpen = false;
+	}
 
 	onMount(async () => {
 		try {
@@ -119,6 +169,7 @@
 				body: JSON.stringify({
 					name: productName.trim(),
 					sku: sku.trim().toUpperCase(),
+					barcode: barcode.trim() || null,
 					categoryId: category,
 					description: description.trim() || null,
 					costPrice: costPrice || null,
@@ -255,6 +306,84 @@
 							required
 							class="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm uppercase outline-none transition focus:border-red-500 focus:bg-white"
 						/>
+					</div>
+
+					<!-- BARCODE -->
+					<div>
+						<label
+							for="barcode"
+							class="mb-2 block text-sm font-bold text-zinc-700"
+						>
+							Barcode
+						</label>
+
+						<div class="flex gap-2">
+							<input
+								id="barcode"
+								type="text"
+								bind:value={barcode}
+								inputmode="numeric"
+								placeholder="Scan or enter barcode"
+								class="min-w-0 flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white"
+							/>
+
+							<button
+								type="button"
+								on:click={startBarcodeScanner}
+								class="flex shrink-0 items-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-zinc-800"
+							>
+								<ScanLine size={18} />
+								<span class="hidden sm:inline">Scan</span>
+							</button>
+						</div>
+
+						<p class="mt-2 text-xs text-zinc-400">
+							Optional. Scan the barcode with your phone or tablet camera, or enter it manually.
+						</p>
+
+						{#if scannerOpen}
+							<div class="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-black">
+								<div class="flex items-center justify-between border-b border-zinc-800 bg-zinc-950 px-4 py-3">
+									<div>
+										<p class="text-sm font-bold text-white">Scan Product Barcode</p>
+										<p class="text-xs text-zinc-400">
+											Point the camera at the barcode
+										</p>
+									</div>
+
+									<button
+										type="button"
+										on:click={stopBarcodeScanner}
+										class="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
+										aria-label="Close barcode scanner"
+									>
+										<X size={20} />
+									</button>
+								</div>
+
+								<div class="relative aspect-video w-full bg-black">
+									<video
+										bind:this={scannerVideo}
+										class="h-full w-full object-cover"
+										autoplay
+										muted
+										playsinline
+									></video>
+
+									<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+										<div
+											class="h-28 w-64 rounded-xl border-2 border-red-500 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]"
+										></div>
+									</div>
+								</div>
+
+								{#if scannerError}
+									<div class="bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+										{scannerError}
+									</div>
+								{/if}
+							</div>
+						{/if}
 					</div>
 
 					<!-- CATEGORY -->
