@@ -2,6 +2,7 @@
 	import storeHero from '$lib/assets/images/autocare/store-hero.jpeg';
 	import { onMount } from 'svelte';
 	import jsPDF from 'jspdf';
+	import { loadCart, saveCart } from '$lib/shop/cart';
 
 	import {
 		ArrowLeft,
@@ -19,12 +20,14 @@
 		Package,
 		Truck,
 		Store,
-		ShieldCheck
+		ShieldCheck,
+		ScanLine
 	} from 'lucide-svelte';
 
 	type Product = {
 		id: string;
 		sku: string;
+		barcode: string | null;
 		name: string;
 		categoryId: string | null;
 		categoryName: string | null;
@@ -69,6 +72,15 @@
 	let productsError = '';
 
 	onMount(async () => {
+		// Restore the saved cart before anything else
+		cart = loadCart<CartItem>();
+		cartReady = true;
+
+		// /shop?cart=open (used by product pages) opens the cart drawer
+		if (new URLSearchParams(window.location.search).get('cart') === 'open') {
+			cartOpen = true;
+		}
+
 		try {
 			const [productsResponse, categoriesResponse] = await Promise.all([
 				fetch('/api/products'),
@@ -98,6 +110,23 @@
 
 			products = productsData;
 			categories = categoriesData;
+
+			// Refresh saved cart items with current price and stock;
+			// drop anything no longer available
+			cart = cart
+				.map((item) => {
+					const current = products.find((p) => p.id === item.id);
+
+					if (!current || !current.active || current.stockQuantity <= 0) {
+						return null;
+					}
+
+					return {
+						...current,
+						cartQuantity: Math.min(item.cartQuantity, current.stockQuantity)
+					};
+				})
+				.filter((item): item is CartItem => item !== null);
 		} catch (error) {
 			console.error('Failed to load shop data:', error);
 			productsError = 'Unable to load shop data. Please try again.';
@@ -154,11 +183,24 @@
 	let searchQuery = '';
 
 	/* =========================================================
+	   BARCODE SCANNER
+	========================================================= */
+
+	let scannerOpen = false;
+	let scannerError = '';
+	let scannerVideo: HTMLVideoElement | null = null;
+	let barcodeReader: BrowserMultiFormatReader | null = null;
+
+	/* =========================================================
 	   CART
 	========================================================= */
 
 	let cart: CartItem[] = [];
 	let cartOpen = false;
+	let cartReady = false;
+
+	// Save the cart whenever it changes (after it has been restored)
+	$: if (cartReady) saveCart(cart);
 
 	/* =========================================================
 	   CHECKOUT
@@ -694,6 +736,63 @@
 	}
 
 	/* =========================================================
+	   SAVE ORDER TO DATABASE
+	   Runs in the background; never blocks WhatsApp/email.
+	========================================================= */
+
+	function saveOrder(channel: 'WhatsApp' | 'Email') {
+		const payload = {
+			reference: orderReference,
+			channel,
+			fulfillment,
+			customer: {
+				name: customerName.trim(),
+				phone: customerPhone.trim(),
+				email: customerEmail.trim() || null,
+				location: customerLocation.trim() || null
+			},
+			notes: orderNotes.trim() || null,
+			subtotal: cartSubtotal,
+			hasUnpricedItems: hasUnavailablePrices,
+			items: cart.map((item) => ({
+				productId: item.id,
+				sku: item.sku,
+				name: item.name,
+				quantity: item.cartQuantity,
+				unitPrice: Number(item.sellingPrice ?? 0)
+			}))
+		};
+
+		fetch('/api/orders', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload),
+			keepalive: true
+		})
+			.then((response) => {
+				if (!response.ok) {
+					console.error('Order was not saved:', response.status);
+				}
+			})
+			.catch((error) => {
+				console.error('Order was not saved:', error);
+			});
+	}
+
+	function startNewOrder() {
+		cart = [];
+		customerName = '';
+		customerPhone = '';
+		customerEmail = '';
+		customerLocation = '';
+		orderNotes = '';
+		fulfillment = 'Pickup';
+		orderSent = false;
+		orderReference = '';
+		checkoutOpen = false;
+	}
+
+	/* =========================================================
 	   SEND WHATSAPP ORDER
 	========================================================= */
 
@@ -717,6 +816,8 @@
 
 		const encodedMessage =
 			encodeURIComponent(message);
+
+		saveOrder('WhatsApp');
 
 		window.open(
 			`https://wa.me/265997245335?text=${encodedMessage}`,
@@ -750,6 +851,8 @@
 
 		const body =
 			createOrderMessage();
+
+		saveOrder('Email');
 
 		window.location.href =
 			`mailto:storesmlera@gmail.com?subject=${encodeURIComponent(subject)}` +
@@ -791,58 +894,100 @@
      HEADER
 ========================================================= -->
 
-<header
-	class="sticky top-0 z-50 border-b border-white/10 bg-black/90 text-white shadow-lg backdrop-blur-xl"
->
+<header class="sticky top-0 z-50 border-b border-zinc-200 bg-white shadow-sm">
 	<div
-		class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6"
+		class="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6"
 	>
-		<a
-			href="/shop"
-			class="flex items-center gap-2"
-		>
-			<div>
-				<div
-					class="text-lg font-black tracking-tight sm:text-xl"
-				>
-					<span class="text-white">MLERA</span>
-					<span class="text-red-500">
-						STORES
-					</span>
-				</div>
+		<!-- LOGO -->
 
-				<p
-					class="hidden text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 sm:block"
-				>
-					Automotive & Workshop
-				</p>
+		<a href="/shop" class="shrink-0">
+			<div class="text-xl font-black tracking-tight sm:text-2xl">
+				<span class="text-zinc-950">MLERA</span>
+				<span class="text-red-600">STORES</span>
 			</div>
+
+			<p
+				class="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400"
+			>
+				Automotive &amp; Workshop
+			</p>
 		</a>
 
-		<div class="flex items-center gap-2">
+		<!-- SEARCH -->
+
+		<form
+			on:submit|preventDefault={() =>
+				document
+					.getElementById('products')
+					?.scrollIntoView({ behavior: 'smooth' })}
+			class="order-last flex w-full items-center rounded-full border border-zinc-200 bg-zinc-50 py-1.5 pl-5 pr-1.5 transition focus-within:border-red-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-red-500/10 md:order-none md:w-auto md:flex-1"
+			role="search"
+		>
+			<label for="header-search" class="sr-only">Search products</label>
+
+			<input
+				id="header-search"
+				type="search"
+				bind:value={searchQuery}
+				placeholder="Search lubricants, filters, spare parts or SKU..."
+				class="min-w-0 flex-1 bg-transparent py-2 text-sm text-zinc-900 outline-none placeholder:text-zinc-400"
+			/>
+
+			<button
+				type="submit"
+				class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-600 text-white transition hover:bg-red-500"
+				aria-label="Search"
+			>
+				<Search size={18} />
+			</button>
+		</form>
+
+		<!-- ACTIONS -->
+
+		<div class="ml-auto flex items-center gap-1 sm:gap-2 md:ml-0">
+			<a
+				href="https://wa.me/265997245335"
+				target="_blank"
+				rel="noopener noreferrer"
+				class="hidden items-center gap-2 rounded-xl px-3 py-2 transition hover:bg-zinc-100 lg:flex"
+			>
+				<MessageCircle size={20} class="text-green-600" />
+
+				<span class="leading-tight">
+					<span class="block text-[10px] font-medium text-zinc-400">
+						WhatsApp
+					</span>
+					<span class="text-sm font-semibold text-zinc-800">
+						+265 997 245 335
+					</span>
+				</span>
+			</a>
+
 			<a
 				href="/"
-				class="hidden items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-gray-300 transition hover:border-red-500/40 hover:bg-white/5 hover:text-white sm:inline-flex"
+				class="hidden items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 sm:flex"
 			>
-				<ArrowLeft size={16} />
+				<ArrowLeft size={17} />
 				AutoCare
 			</a>
 
 			<button
 				type="button"
 				on:click={() => (cartOpen = true)}
-				class="relative flex h-11 w-11 items-center justify-center rounded-xl bg-red-600 text-white shadow-lg shadow-red-600/20 transition hover:bg-red-500"
+				class="relative flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-100"
 				aria-label="Open shopping cart"
 			>
-				<ShoppingCart size={20} />
+				<span class="relative">
+					<ShoppingCart size={23} />
 
-				{#if cartCount > 0}
 					<span
-						class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[10px] font-black text-red-600 ring-2 ring-black"
+						class="absolute -right-2.5 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white ring-2 ring-white"
 					>
 						{cartCount}
 					</span>
-				{/if}
+				</span>
+
+				<span class="hidden sm:inline">Cart</span>
 			</button>
 		</div>
 	</div>
@@ -852,72 +997,166 @@
      HERO
 ========================================================= -->
 
-<section
-	class="relative overflow-hidden bg-black px-6 pb-20 pt-28 sm:pb-24 sm:pt-32"
->
-	<div class="absolute inset-0">
-		<img
-			src={storeHero}
-			alt=""
-			width="1600"
-			height="900"
-			class="h-full w-full object-cover"
-		/>
+<section class="bg-zinc-100">
+	<div class="mx-auto max-w-7xl px-4 pt-5 sm:px-6">
+		<div class="grid gap-5 lg:grid-cols-[260px_1fr]">
 
-		<div
-			class="absolute inset-0 bg-black/65"
-		></div>
+			<!-- CATEGORY SIDEBAR -->
 
-		<div
-			class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/55 to-red-950/30"
-		></div>
-
-		<div
-			class="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent"
-		></div>
-	</div>
-
-	<div
-		class="relative z-10 mx-auto flex min-h-[500px] max-w-7xl items-center"
-	>
-		<div class="max-w-3xl">
-			<p
-				class="text-sm font-bold uppercase tracking-[0.25em] text-red-500"
+			<nav
+				aria-label="Shop by category"
+				class="hidden overflow-hidden rounded-2xl border border-zinc-200 bg-white lg:flex lg:flex-col"
 			>
-				Mlera Stores
-			</p>
-
-			<h1
-				class="mt-4 text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-7xl"
-			>
-				Quality Parts.
-				<span class="text-red-500">
-					Quality Care.
-				</span>
-			</h1>
-
-			<p
-				class="mt-6 max-w-2xl text-base leading-7 text-gray-200 sm:text-lg sm:leading-8"
-			>
-				Shop automotive lubricants, spare parts,
-				filters, accessories, safety wear and
-				workshop products.
-			</p>
-
-			<div class="mt-8 flex flex-wrap gap-3">
-				<a
-					href="#products"
-					class="inline-flex items-center rounded-xl bg-red-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-red-600/30 transition hover:bg-red-500"
+				<div
+					class="flex items-center gap-2 bg-zinc-950 px-4 py-3.5 text-sm font-bold text-white"
 				>
-					Shop Products
-				</a>
+					<SlidersHorizontal size={16} class="text-red-500" />
+					Shop by Category
+				</div>
 
-				<a
-					href="/"
-					class="inline-flex items-center rounded-xl border border-white/20 bg-black/30 px-6 py-3 text-sm font-bold text-white backdrop-blur-sm transition hover:border-red-500/50 hover:bg-black/50"
-				>
-					Back to AutoCare
-				</a>
+				<ul class="max-h-[372px] flex-1 divide-y divide-zinc-100 overflow-y-auto">
+					<li>
+						<a
+							href="#products"
+							on:click={() => (selectedCategory = 'All Products')}
+							class={`flex items-center justify-between px-4 py-2.5 text-sm font-semibold transition hover:bg-red-50 hover:text-red-600 ${
+								selectedCategory === 'All Products'
+									? 'text-red-600'
+									: 'text-zinc-700'
+							}`}
+						>
+							All Products
+							<ArrowRight size={14} class="text-zinc-300" />
+						</a>
+					</li>
+
+					{#if loadingCategories}
+						{#each Array(8) as _}
+							<li class="px-4 py-3">
+								<div class="h-4 w-3/4 animate-pulse rounded bg-zinc-100"></div>
+							</li>
+						{/each}
+					{:else}
+						{#each categories as category}
+							<li>
+								<a
+									href="#products"
+									on:click={() => (selectedCategory = category.name)}
+									class={`flex items-center justify-between px-4 py-2.5 text-sm font-semibold transition hover:bg-red-50 hover:text-red-600 ${
+										selectedCategory === category.name
+											? 'text-red-600'
+											: 'text-zinc-700'
+									}`}
+								>
+									<span class="truncate">{category.name}</span>
+									<ArrowRight size={14} class="shrink-0 text-zinc-300" />
+								</a>
+							</li>
+						{/each}
+					{/if}
+				</ul>
+			</nav>
+
+			<!-- MAIN BANNER -->
+
+			<div
+				class="relative flex min-h-[300px] items-center overflow-hidden rounded-2xl bg-zinc-950 sm:min-h-[420px]"
+			>
+				<img
+					src={storeHero}
+					alt=""
+					width="1600"
+					height="900"
+					class="absolute inset-0 h-full w-full object-cover"
+				/>
+
+				<div
+					class="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent"
+				></div>
+
+				<div class="relative max-w-xl p-6 sm:p-12">
+					<p
+						class="text-xs font-bold uppercase tracking-[0.25em] text-red-500"
+					>
+						Mlera Stores Online Shop
+					</p>
+
+					<h1
+						class="mt-3 text-4xl font-black leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl"
+					>
+						Quality Parts.
+						<span class="block text-red-500">Quality Care.</span>
+					</h1>
+
+					<p class="mt-4 text-sm leading-6 text-gray-200 sm:text-base">
+						Engine oils, filters, spare parts and workshop supplies.
+						Order online, then collect in-store or get it delivered.
+					</p>
+
+					<div class="mt-7 flex flex-wrap gap-3">
+						<a
+							href="#products"
+							class="inline-flex items-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-red-600/30 transition hover:bg-red-500"
+						>
+							Shop Now
+							<ArrowRight size={16} />
+						</a>
+
+						<a
+							href="https://wa.me/265997245335"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20"
+						>
+							<MessageCircle size={16} />
+							Order on WhatsApp
+						</a>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- SERVICE STRIP -->
+
+		<div class="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+			<div class="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4">
+				<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+					<Store size={19} />
+				</div>
+				<div class="min-w-0">
+					<p class="text-sm font-black text-zinc-900">Store Pickup</p>
+					<p class="hidden text-xs text-zinc-500 sm:block">Collect your order in-store</p>
+				</div>
+			</div>
+
+			<div class="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4">
+				<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+					<Truck size={19} />
+				</div>
+				<div class="min-w-0">
+					<p class="text-sm font-black text-zinc-900">Delivery</p>
+					<p class="hidden text-xs text-zinc-500 sm:block">Arranged to your location</p>
+				</div>
+			</div>
+
+			<div class="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4">
+				<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+					<MessageCircle size={19} />
+				</div>
+				<div class="min-w-0">
+					<p class="text-sm font-black text-zinc-900">WhatsApp Orders</p>
+					<p class="hidden text-xs text-zinc-500 sm:block">Send your cart in one tap</p>
+				</div>
+			</div>
+
+			<div class="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4">
+				<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+					<ShieldCheck size={19} />
+				</div>
+				<div class="min-w-0">
+					<p class="text-sm font-black text-zinc-900">Quality Parts</p>
+					<p class="hidden text-xs text-zinc-500 sm:block">Lubricants, filters &amp; spares</p>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -929,107 +1168,76 @@
 
 <section
 	id="products"
-	class="bg-white px-4 py-16 sm:px-6 lg:py-20"
+	class="scroll-mt-36 bg-zinc-100 px-4 pb-16 pt-10 sm:px-6 md:scroll-mt-24"
 >
 	<div class="mx-auto max-w-7xl">
 
 		<!-- SECTION HEADER -->
 
-		<div
-			class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"
-		>
+		<div class="flex flex-wrap items-end justify-between gap-4">
 			<div>
-				<p
-					class="text-sm font-bold uppercase tracking-[0.2em] text-red-600"
-				>
-					Mlera Stores
-				</p>
-
-				<h2
-					class="mt-2 text-3xl font-black tracking-tight text-zinc-950 sm:text-4xl"
-				>
-					Shop Our Products
+				<h2 class="text-2xl font-black tracking-tight text-zinc-950 sm:text-3xl">
+					{selectedCategory === 'All Products' ? 'Shop Our Products' : selectedCategory}
 				</h2>
 
-				<p
-					class="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 sm:text-base"
-				>
-					Browse products from our current inventory.
-					Click any product to view more details.
+				<p class="mt-1 text-sm text-zinc-500">
+					{#if loadingProducts}
+						Loading products...
+					{:else}
+						{filteredProducts.length} products
+						{#if searchQuery.trim()}
+							for “{searchQuery.trim()}”
+						{/if}
+					{/if}
 				</p>
 			</div>
 
-			<div
-				class="flex items-center gap-2 rounded-xl bg-zinc-100 px-4 py-3 text-sm font-semibold text-zinc-600"
-			>
-				<Package size={17} />
-
-				{#if loadingProducts}
-					Loading products...
-				{:else}
-					{filteredProducts.length} products
-				{/if}
-			</div>
+			{#if searchQuery.trim() || selectedCategory !== 'All Products'}
+				<button
+					type="button"
+					on:click={clearFilters}
+					class="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-bold text-zinc-700 transition hover:border-red-200 hover:text-red-600"
+				>
+					<X size={16} />
+					Clear Filters
+				</button>
+			{/if}
 		</div>
 
-		<!-- SEARCH -->
+		<!-- CATEGORY PILLS -->
 
-		<div
-			class="mt-8 flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 lg:flex-row"
-		>
-			<div class="relative flex-1">
-				<Search
-					size={19}
-					class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"
-				/>
-
-				<input
-					type="search"
-					bind:value={searchQuery}
-					placeholder="Search products, SKU or category..."
-					class="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-11 pr-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/10"
-				/>
-			</div>
-
+		<div class="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
 			<button
 				type="button"
-				on:click={clearFilters}
-				class="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-5 py-3 text-sm font-bold text-zinc-700 transition hover:border-red-200 hover:text-red-600"
+				on:click={() => (selectedCategory = 'All Products')}
+				class={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition sm:text-sm ${
+					selectedCategory === 'All Products'
+						? 'border-red-600 bg-red-600 text-white'
+						: 'border-zinc-200 bg-white text-zinc-700 hover:border-red-200 hover:text-red-600'
+				}`}
 			>
-				<SlidersHorizontal size={17} />
-				Clear Filters
+				All Products
 			</button>
-		</div>
 
-		<!-- CATEGORY FILTERS -->
-
-		<div class="mt-6">
-			<div
-				class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-			>
-				{#each categories as category}
-					<button
-						type="button"
-						on:click={() =>
-							(selectedCategory = category.name)}
-						class={`rounded-xl border px-3 py-3 text-xs font-bold transition sm:text-sm ${
-							selectedCategory === category.name
-								? 'border-red-600 bg-red-600 text-white shadow-lg shadow-red-600/20'
-								: 'border-zinc-200 bg-white text-zinc-700 hover:border-red-200 hover:text-red-600'
-						}`}
-					>
-						{category.name}
-					</button>
-				{/each}
-			</div>
+			{#each categories as category}
+				<button
+					type="button"
+					on:click={() => (selectedCategory = category.name)}
+					class={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition sm:text-sm ${
+						selectedCategory === category.name
+							? 'border-red-600 bg-red-600 text-white'
+							: 'border-zinc-200 bg-white text-zinc-700 hover:border-red-200 hover:text-red-600'
+					}`}
+				>
+					{category.name}
+				</button>
+			{/each}
 		</div>
 
 		<!-- ERROR -->
 
 		{#if productsError}
-			<div
-				class="mt-8 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-semibold text-red-700"
-			>
+			<div class="mt-8 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-semibold text-red-700">
 				{productsError}
 			</div>
 		{/if}
@@ -1037,33 +1245,15 @@
 		<!-- LOADING -->
 
 		{#if loadingProducts}
-			<div
-				class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-			>
-				{#each Array(8) as _}
-					<div
-						class="overflow-hidden rounded-2xl border border-zinc-200 bg-white"
-					>
-						<div
-							class="aspect-square animate-pulse bg-zinc-100"
-						></div>
-
-						<div class="space-y-3 p-5">
-							<div
-								class="h-3 w-20 animate-pulse rounded bg-zinc-100"
-							></div>
-
-							<div
-								class="h-5 w-3/4 animate-pulse rounded bg-zinc-100"
-							></div>
-
-							<div
-								class="h-4 w-1/2 animate-pulse rounded bg-zinc-100"
-							></div>
-
-							<div
-								class="h-10 w-full animate-pulse rounded-xl bg-zinc-100"
-							></div>
+			<div class="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+				{#each Array(10) as _}
+					<div class="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+						<div class="aspect-square animate-pulse bg-zinc-100"></div>
+						<div class="space-y-3 p-4">
+							<div class="h-3 w-20 animate-pulse rounded bg-zinc-100"></div>
+							<div class="h-4 w-3/4 animate-pulse rounded bg-zinc-100"></div>
+							<div class="h-5 w-1/2 animate-pulse rounded bg-zinc-100"></div>
+							<div class="h-9 w-full animate-pulse rounded-lg bg-zinc-100"></div>
 						</div>
 					</div>
 				{/each}
@@ -1073,26 +1263,15 @@
 
 			<!-- EMPTY -->
 
-			<div
-				class="mt-10 rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-16 text-center"
-			>
-				<div
-					class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-zinc-400 shadow-sm"
-				>
+			<div class="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-white px-6 py-16 text-center">
+				<div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400">
 					<Search size={28} />
 				</div>
 
-				<h3
-					class="mt-5 text-xl font-black text-zinc-900"
-				>
-					No products found
-				</h3>
+				<h3 class="mt-5 text-xl font-black text-zinc-900">No products found</h3>
 
-				<p
-					class="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500"
-				>
-					Try another search term or select a
-					different category.
+				<p class="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
+					Try another search term or select a different category.
 				</p>
 
 				<button
@@ -1108,24 +1287,17 @@
 
 			<!-- PRODUCT GRID -->
 
-			<div
-				class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-			>
+			<div class="mt-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
 				{#each filteredProducts as product}
-					{@const stockStatus =
-						getStockStatus(product)}
+					{@const stockStatus = getStockStatus(product)}
 
 					<div
 						role="button"
 						tabindex="0"
-						class="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-red-200 hover:shadow-2xl"
-						on:click={() =>
-							openProductDetails(product)}
+						class="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white transition duration-200 hover:border-zinc-300 hover:shadow-xl"
+						on:click={() => openProductDetails(product)}
 						on:keydown={(event) => {
-							if (
-								event.key === 'Enter' ||
-								event.key === ' '
-							) {
+							if (event.key === 'Enter' || event.key === ' ') {
 								event.preventDefault();
 								openProductDetails(product);
 							}
@@ -1133,9 +1305,7 @@
 					>
 						<!-- PRODUCT IMAGE -->
 
-						<div
-							class="relative aspect-square overflow-hidden bg-zinc-100"
-						>
+						<div class="relative aspect-square overflow-hidden bg-white">
 							{#if product.imageUrl}
 								<img
 									src={product.imageUrl}
@@ -1143,24 +1313,19 @@
 									width="600"
 									height="600"
 									loading="lazy"
-									class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+									class="h-full w-full object-contain p-4 transition duration-500 group-hover:scale-105"
 								/>
 							{:else}
-								<div
-									class="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-200 text-zinc-400"
-								>
-									<Package size={52} />
-
-									<span
-										class="mt-3 text-[10px] font-bold uppercase tracking-wider"
-									>
+								<div class="flex h-full w-full flex-col items-center justify-center bg-zinc-50 text-zinc-300">
+									<Package size={48} />
+									<span class="mt-3 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
 										Image coming soon
 									</span>
 								</div>
 							{/if}
 
 							<div
-								class={`absolute left-3 top-3 rounded-full px-3 py-1.5 text-[10px] font-bold shadow-sm ${stockStatus.className}`}
+								class={`absolute left-2 top-2 rounded-full px-2.5 py-1 text-[10px] font-bold ${stockStatus.className}`}
 							>
 								{stockStatus.label}
 							</div>
@@ -1168,80 +1333,40 @@
 
 						<!-- PRODUCT INFORMATION -->
 
-						<div
-							class="flex flex-1 flex-col p-5"
-						>
+						<div class="flex flex-1 flex-col border-t border-zinc-100 p-3 sm:p-4">
 							{#if product.categoryName}
-								<p
-									class="text-[10px] font-bold uppercase tracking-wider text-red-600"
-								>
+								<p class="truncate text-[11px] font-semibold text-zinc-400">
 									{product.categoryName}
 								</p>
 							{/if}
 
-							<h3
-								class="mt-2 line-clamp-2 min-h-[48px] text-base font-black leading-6 text-zinc-900"
-							>
+							<h3 class="mt-1 line-clamp-2 min-h-[40px] text-sm font-medium leading-5 text-zinc-800 group-hover:text-red-600">
 								{product.name}
 							</h3>
 
-							<p
-								class="mt-1 text-[10px] font-semibold text-zinc-400"
-							>
-								SKU: {product.sku}
+							<p class="mt-3 text-base font-black text-zinc-950 sm:text-lg">
+								{formatPrice(Number(product.sellingPrice ?? 0))}
 							</p>
 
-							<p
-								class="mt-4 text-lg font-black text-zinc-950"
-							>
-								{formatPrice(
-									Number(
-										product.sellingPrice ?? 0
-									)
-								)}
+							<p class="mt-0.5 text-xs text-zinc-500">
+								{product.stockQuantity > 0
+									? `${product.stockQuantity} available`
+									: 'Unavailable'}
 							</p>
-
-							<div
-								class="mt-3 flex items-center justify-between text-xs"
-							>
-								<span class="text-zinc-500">
-									{#if product.stockQuantity > 0}
-										{product.stockQuantity}
-										available
-									{:else}
-										Unavailable
-									{/if}
-								</span>
-
-								<span
-									class="font-semibold text-red-600"
-								>
-									View details
-									<ArrowRight
-										size={13}
-										class="ml-1 inline"
-									/>
-								</span>
-							</div>
 
 							<button
 								type="button"
-								disabled={
-									product.stockQuantity <= 0
-								}
-								on:click|stopPropagation={() =>
-									addToCart(product)}
-								class={`mt-5 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition ${
+								disabled={product.stockQuantity <= 0}
+								on:click|stopPropagation={() => addToCart(product)}
+								class={`mt-auto flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-xs font-bold transition sm:text-sm ${
 									product.stockQuantity <= 0
 										? 'cursor-not-allowed bg-zinc-100 text-zinc-400'
-										: 'bg-red-600 text-white shadow-lg shadow-red-600/10 hover:bg-red-500'
+										: 'bg-red-600 text-white hover:bg-red-500'
 								}`}
+								style="margin-top: 0.875rem;"
 							>
-								<ShoppingCart size={17} />
-
-								{product.stockQuantity <= 0
-									? 'Out of Stock'
-									: 'Add to Cart'}
+								<ShoppingCart size={16} />
+								{product.stockQuantity <= 0 ? 'Out of Stock' : 'Add to Cart'}
 							</button>
 						</div>
 					</div>
@@ -1327,8 +1452,6 @@
 							</span>
 						</div>
 					{/if}
-
-				
 
 					<div
 						class={`absolute left-9 top-9 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm ${getStockStatus(selectedProduct).className}`}
@@ -1470,12 +1593,20 @@
 								: 'Add to Cart'}
 						</button>
 
+						<a
+							href={`/shop/${selectedProduct.id}`}
+							class="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 px-5 py-3 text-sm font-semibold text-zinc-700 transition hover:border-red-200 hover:text-red-600"
+						>
+							View full details
+							<ArrowRight size={16} />
+						</a>
+
 						<button
 							type="button"
 							on:click={
 								closeProductDetails
 							}
-							class="mt-3 w-full rounded-xl border border-zinc-200 px-5 py-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
+							class="mt-2 w-full rounded-xl px-5 py-3 text-sm font-semibold text-zinc-500 transition hover:bg-zinc-50"
 						>
 							Continue Shopping
 						</button>
@@ -2172,6 +2303,14 @@
 								or email step if it has not
 								already opened.
 							</p>
+
+							<button
+								type="button"
+								on:click={startNewOrder}
+								class="mt-3 rounded-lg bg-green-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-green-500"
+							>
+								Done – start a new order
+							</button>
 						</div>
 					</div>
 				{/if}
